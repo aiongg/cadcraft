@@ -955,10 +955,12 @@ fn write_line(ctx: &mut Ctx<'_>, a: Vec<Value>) -> Result<Flow, LispError> {
     Ok(Flow::Value(Value::Str(s)))
 }
 
-fn findfile(a: &[Value]) -> R {
-    arity(a, 1, 1)?;
+/// `(findfile name)`: the full path of an absolute `name`, or of `name` in the support folder.
+fn findfile(ctx: &mut Ctx<'_>, a: Vec<Value>) -> Result<Flow, LispError> {
+    arity(&a, 1, 1)?;
     let p = string(&a[0])?;
-    Ok(if file_exists(&p) { Value::Str(p) } else { Value::Nil })
+    let found = ctx.s.lisp_search_path(&p).map(|p| p.to_string_lossy().into_owned()).filter(|p| file_exists(p));
+    Ok(Flow::Value(found.map(|p| Value::str(&p)).unwrap_or_default()))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -1377,7 +1379,7 @@ static BUILTINS: &[Builtin] = &[
     pure!("DISTANCE", distance),
     pure!("ANGLE", angle),
     pure!("INTERS", inters),
-    pure!("FINDFILE", findfile),
+    ctx!("FINDFILE", findfile),
     pure!("VL-CATCH-ALL-ERROR-P", vl_catch_all_error_p),
     pure!("VL-CATCH-ALL-ERROR-MESSAGE", vl_catch_all_error_message),
     pure!("VL-LOAD-COM", noop),

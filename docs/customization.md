@@ -21,7 +21,9 @@ prompts instead of a dialog.
 
 Put routines you want in every session in the support folder (`support` in the settings folder;
 paths in [autolisp.md](autolisp.md#at-startup)) and load them from `acad.lsp` or `acaddoc.lsp`, or
-with `(autoload "file" '("CMD"))` so they load the first time their command is typed.
+with `(autoload "file" '("CMD"))` so they load the first time their command is typed. `(load)`,
+`(findfile)` and `autoload` look for files in the support folder (or at an absolute path), never in
+the working folder.
 
 ## Scripts
 

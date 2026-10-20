@@ -7,7 +7,7 @@
 //! Never from a drawing's own folder: an `acaddoc.lsp` that came along with a downloaded drawing
 //! would run on opening it, the way LISP viruses spread.
 
-use std::path::PathBuf;
+use std::path::{Component, PathBuf};
 
 use super::value::Value;
 use crate::Session;
@@ -25,6 +25,28 @@ impl Session {
     /// The folder startup LISP files are read from.
     pub fn lisp_support_dir(&self) -> Option<&std::path::Path> {
         self.lisp.support_dir.as_deref()
+    }
+
+    /// Where `(load)`, `(findfile)` and APPLOAD look for `name`: an absolute path as given, any
+    /// other name in the support folder only. The working folder is not searched: when the app is
+    /// opened from a drawing's folder (Windows "Open with" starts it there), `(load "mylib")` in
+    /// `acaddoc.lsp` would otherwise read a `mylib.lsp` that came with the drawing.
+    pub(crate) fn lisp_search_path(&self, name: &str) -> Option<PathBuf> {
+        let path = std::path::Path::new(name);
+        if path.is_absolute() {
+            return Some(path.to_path_buf());
+        }
+        // Only plain names below the support folder: no `..`, root or drive prefix.
+        let plain = path.components().all(|c| matches!(c, Component::Normal(_) | Component::CurDir));
+        let dir = self.lisp.support_dir.as_deref()?;
+        plain.then(|| dir.join(path))
+    }
+
+    /// APPLOAD's file: as [`Session::lisp_search_path`], and also a path relative to the working
+    /// folder when it says so with a leading `./` or `../` (typed by the user, not found by LISP).
+    pub(crate) fn appload_path(&self, name: &str) -> Option<PathBuf> {
+        let explicit = ["./", "../", ".\\", "..\\"].iter().any(|p| name.starts_with(p));
+        if explicit { Some(PathBuf::from(name)) } else { self.lisp_search_path(name) }
     }
 
     /// Load the startup files into the active drawing, once (from [`Session::lisp_tick`]).

@@ -6,9 +6,14 @@ CADCraft runs AutoLISP routines (`.lsp` files). What is here and what is not yet
 ## Loading and running
 
 - **APPLOAD** (Tools > Load Application…, alias `AP`) asks for a `.lsp` file and runs it. Dropping
-  a `.lsp` file on the window does the same.
-- **`(load "name")`** loads a file by path, with `.lsp` added when the name has none. A file
-  APPLOAD loaded is found again by its name, also on the web where there is no file system.
+  a `.lsp` file on the window does the same. A relative name is looked up in the
+  [support folder](#at-startup); a file in the working folder needs `./` (or `../` for its
+  parent), as in `./mylib.lsp`.
+- **`(load "name")`** loads a file from the support folder, or from an absolute path, with `.lsp`
+  added when the name has none. A file APPLOAD loaded is found again by its name, also on the web
+  where there is no file system. `(findfile "name")` searches the same way and returns the full
+  path. Neither searches the working folder, so a routine loaded at startup or with a drawing
+  does not pick up files from the drawing's folder.
 - **`(defun c:NAME …)`** defines a command: type `NAME` at the command line. Built-in commands
   keep their names.
 - **At the command line**, `(expression)` evaluates and shows the value, and `!variable` shows a

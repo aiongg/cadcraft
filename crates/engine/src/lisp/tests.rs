@@ -540,6 +540,43 @@ fn startup_files_load_from_the_support_folder() {
 }
 
 #[test]
+fn load_searches_the_support_folder_not_the_working_folder() {
+    // Removes the working-folder file even when an assertion fails.
+    struct Remove(std::path::PathBuf);
+    impl Drop for Remove {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_file(&self.0);
+        }
+    }
+    let name = format!("cadcraft-load-order-{}", std::process::id());
+    let here = Remove(std::env::current_dir().unwrap().join(format!("{name}.lsp")));
+    std::fs::write(&here.0, "(setq from \"working\")").unwrap();
+    let support = std::env::temp_dir().join(format!("{name}-support"));
+    std::fs::create_dir_all(&support).unwrap();
+    std::fs::write(support.join(format!("{name}.lsp")), "(setq from \"support\")").unwrap();
+
+    let mut s = session();
+    s.set_lisp_support_dir(Some(support.clone()));
+    assert_eq!(ok(&mut s, &format!("(load \"{name}\") from")), "\"support\"");
+    let found = ok(&mut s, &format!("(findfile \"{name}.lsp\")"));
+    assert!(found.contains(&format!("{name}-support")), "{found}");
+    // `..` does not leave the support folder.
+    assert_eq!(ok(&mut s, &format!("(load \"../{name}\" 'missing)")), "MISSING");
+
+    // Only the working folder has it: not found.
+    std::fs::remove_dir_all(&support).unwrap();
+    let mut s = session();
+    s.set_lisp_support_dir(Some(support.clone()));
+    assert!(eval(&mut s, &format!("(load \"{name}\")")).is_err());
+    assert_eq!(ok(&mut s, &format!("(findfile \"{name}.lsp\")")), "nil");
+    // APPLOAD takes it when the user names the working folder.
+    let r = s.execute("appload", &serde_json::json!({"path": format!("./{name}.lsp")})).unwrap();
+    assert!(r.get("error").is_none(), "{r}");
+    assert_eq!(to_text(&s.lisp_var("FROM"), true), "\"working\"");
+    assert!(s.execute("appload", &serde_json::json!({"path": format!("{name}.lsp")})).is_err());
+}
+
+#[test]
 fn deeply_nested_lists_drop_without_overflowing_the_stack() {
     let _heavy = super::value::HEAVY_CELLS.lock().unwrap_or_else(|e| e.into_inner());
     // Nested in the car a million deep: dropping it must not recurse.

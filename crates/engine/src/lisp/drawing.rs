@@ -972,16 +972,13 @@ pub fn trans(_ctx: &mut Ctx<'_>, a: Vec<Value>) -> Result<Flow, LispError> {
     Ok(Flow::Value(Value::point(&p)))
 }
 
-/// What `(load name)` reads: a file loaded through APPLOAD (the web), or one on disk, with
-/// `.lsp` added when the name has no extension.
+/// What `(load name)` reads: a file loaded through APPLOAD (the web), or one on disk (an absolute
+/// path, or a name in the support folder), with `.lsp` added when the name has no extension.
 pub fn load_source(s: &Session, name: &str) -> Option<String> {
     if let Some(t) = s.lisp_file(name) {
         return Some(t);
     }
     let candidates =
         if std::path::Path::new(name).extension().is_none() { vec![format!("{name}.lsp"), name.to_string()] } else { vec![name.to_string()] };
-    // As given (a path, or relative to the working folder), then in the support folder.
-    let support =
-        s.lisp_support_dir().map(|d| candidates.iter().map(|c| d.join(c).to_string_lossy().into_owned()).collect::<Vec<_>>()).unwrap_or_default();
-    candidates.iter().chain(&support).find_map(|c| super::builtins::read_text_file(c))
+    candidates.iter().filter_map(|c| s.lisp_search_path(c)).find_map(|p| super::builtins::read_text_file(&p.to_string_lossy()))
 }

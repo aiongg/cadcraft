@@ -23,8 +23,9 @@ pub fn specs() -> Vec<CommandSpec> {
     ]
 }
 
-/// The text of a LISP file from `{path}` or `{name, data | text}`, and its name.
-fn source(p: &Value) -> Result<(String, String)> {
+/// The text of a LISP file from `{path}` or `{name, data | text}`, and its name. A `path` is
+/// absolute, a name in the support folder, or relative to the working folder with `./` or `../`.
+fn source(s: &Session, p: &Value) -> Result<(String, String)> {
     if let Some(text) = str_param(p, "text") {
         return Ok((str_param(p, "name").unwrap_or("untitled.lsp").to_string(), text.to_string()));
     }
@@ -33,7 +34,10 @@ fn source(p: &Value) -> Result<(String, String)> {
         return Ok((str_param(p, "name").unwrap_or("untitled.lsp").to_string(), String::from_utf8_lossy(&bytes).into_owned()));
     }
     let path = str_param(p, "path").ok_or_else(|| bad("appload", "`path`, or `name` with `data` (base64) or `text`, is required"))?;
-    let text = crate::lisp::builtins::read_text_file(path).ok_or_else(|| bad("appload", format!("{path}: can't read the file")))?;
+    let text = s
+        .appload_path(path)
+        .and_then(|f| crate::lisp::builtins::read_text_file(&f.to_string_lossy()))
+        .ok_or_else(|| bad("appload", format!("{path}: can't read the file")))?;
     Ok((path.to_string(), text))
 }
 
@@ -48,7 +52,7 @@ fn report(s: &Session, from_log: usize, r: Option<std::result::Result<Lv, String
 }
 
 fn run_appload(s: &mut Session, p: &Value) -> Result<Value> {
-    let (name, text) = source(p)?;
+    let (name, text) = source(s, p)?;
     let from = s.log.len();
     let r = s.lisp_load(&name, &text, true)?;
     Ok(report(s, from, r))
@@ -92,7 +96,7 @@ impl Interactive for ApploadM {
         if path.is_empty() {
             return Ok(Step::Cancel);
         }
-        match source(&json!({ "path": path })) {
+        match source(s, &json!({ "path": path })) {
             Ok((name, text)) => {
                 // The routine may wait for the user: it carries on after this command ends.
                 if let Err(e) = s.lisp_load(&name, &text, false) {
