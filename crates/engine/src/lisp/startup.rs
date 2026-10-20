@@ -27,11 +27,15 @@ impl Session {
         self.lisp.support_dir.as_deref()
     }
 
-    /// Where `(load)`, `(findfile)` and APPLOAD look for `name`: an absolute path as given, any
-    /// other name in the support folder only. The working folder is not searched: when the app is
-    /// opened from a drawing's folder (Windows "Open with" starts it there), `(load "mylib")` in
-    /// `acaddoc.lsp` would otherwise read a `mylib.lsp` that came with the drawing.
+    /// Where `(load)`, `(findfile)` and APPLOAD look for `name`: an absolute path on this computer
+    /// as given, any other name in the support folder only. The working folder is not searched:
+    /// when the app is opened from a drawing's folder (Windows "Open with" starts it there),
+    /// `(load "mylib")` in `acaddoc.lsp` would otherwise read a `mylib.lsp` that came with the
+    /// drawing. A path on another computer (`\\server\share\…`) is not looked at at all.
     pub(crate) fn lisp_search_path(&self, name: &str) -> Option<PathBuf> {
+        if !craft_docpath::is_local(name) {
+            return None;
+        }
         let path = std::path::Path::new(name);
         if path.is_absolute() {
             return Some(path.to_path_buf());

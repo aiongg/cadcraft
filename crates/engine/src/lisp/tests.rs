@@ -562,6 +562,10 @@ fn load_searches_the_support_folder_not_the_working_folder() {
     assert!(found.contains(&format!("{name}-support")), "{found}");
     // `..` does not leave the support folder.
     assert_eq!(ok(&mut s, &format!("(load \"../{name}\" 'missing)")), "MISSING");
+    // A network path is not looked at.
+    assert!(s.lisp_search_path(r"\\server\share\x.lsp").is_none());
+    assert_eq!(ok(&mut s, r#"(findfile "\\\\server\\share\\x.lsp")"#), "nil");
+    assert_eq!(ok(&mut s, r#"(load "\\\\server\\share\\x" 'missing)"#), "MISSING");
 
     // Only the working folder has it: not found.
     std::fs::remove_dir_all(&support).unwrap();
