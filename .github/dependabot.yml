@@ -14,6 +14,19 @@ updates:
           - "*"
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # egui 0.37 needs craft-ui on egui 0.37 first (storytold/craft-libs#199).
+      - dependency-name: "egui"
+        versions: [">=0.37"]
+      - dependency-name: "egui_kittest"
+        versions: [">=0.37"]
+      - dependency-name: "eframe"
+        versions: [">=0.37"]
+      - dependency-name: "egui-wgpu"
+        versions: [">=0.37"]
+      # acadrust 0.6.5 changes the bytes of a re-saved DWG; held at 0.6.4 until reviewed.
+      - dependency-name: "acadrust"
+        versions: [">0.6.4"]
 
   # Maintain GitHub Actions workflows
   - package-ecosystem: "github-actions"

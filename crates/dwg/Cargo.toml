@@ -10,4 +10,5 @@ workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # MPL-2.0: used as an unmodified dependency only (see plan/adr/0001 and NOTICE).
-acadrust = "0.6.4"
+# 0.6.5 changes the bytes of a re-saved DWG (dim_block_resave_roundtrip); held until reviewed.
+acadrust = "=0.6.4"
